@@ -39,7 +39,6 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'optparse' 
-require 'rdoc'
 require 'ostruct'
 require 'date'
 require 'find'
@@ -72,7 +71,7 @@ class App
       start_time = Time.now
       puts "Start at #{Time.now}\n\n" if @options.verbose
       
-      output_options if @options.verbose # [Optional]
+      # output_options if @options.verbose # [Optional]
             
       process_arguments            
       process_command
@@ -81,7 +80,7 @@ class App
       puts "\nProcessing took #{Time.now - start_time} seconds" if @options.verbose
       
     else
-      output_usage
+      # output_usage
     end
       
   end
@@ -128,15 +127,6 @@ class App
     # Setup the arguments
     def process_arguments
       @dir = @arguments.first
-    end
-    
-    def output_help
-      output_version
-      RDoc::usage() #exits app
-    end
-    
-    def output_usage
-      RDoc::new.usage('usage') # gets usage from comments above
     end
     
     def output_version
