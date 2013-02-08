@@ -38,117 +38,59 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'optparse' 
-require 'ostruct'
-require 'date'
-require 'find'
-require 'tempfile'
-
+require 'trollop'
 require 'RMagick'
+require 'date'
 
 class App
   VERSION = '1.0'
   
-  attr_reader :options
-
-  def initialize(arguments, stdin)
-    @arguments = arguments
-    @stdin = stdin
+  def initialize(args, stdin)
     
-    # Set defaults
-    @options = OpenStruct.new
-    @options.ringier = true
-    @options.smd = false
-    @options.verbose = false
-    @options.quiet = false
-    @options.quality = 95
-  end
+    @opts = Trollop::options do
+      # --version shows:
+      version "FutureFolio Legacy Worker 1.0.0 (c) 2013 Ringier AG, Javier Vazquez"
+      # --help shows:
+      banner <<-EOS
+      Renames PDFs in directories to FutureFolio naming convention and creates a JPG thumbnail for every PDF
 
+      Usage:
+        ff_legacy_worker.rb [options] <directory>
+      where [options] are:
+      EOS
+      # Options available for this application
+      opt :smd, "Work on SMD legacy PDFs"
+      opt :ringier, "Work on Ringier legacy PDFs"
+      opt :dir, "Working directory", :type => :string
+    end
+    
+  end
+  
   # Parse options, check arguments, then process the command
   def run
-        
-    if parsed_options? && arguments_valid? 
-      start_time = Time.now
-      puts "Start at #{Time.now}\n\n" if @options.verbose
-      
-      # output_options if @options.verbose # [Optional]
-            
-      process_arguments            
-      process_command
-      
-      puts "\nFinished at #{Time.now}" if @options.verbose
-      puts "\nProcessing took #{Time.now - start_time} seconds" if @options.verbose
-      
-    else
-      # output_usage
-    end
-      
+    start_time = Time.now
+    validate_opts
+    
+    parse_dir(@opts[:dir])
+    
+    puts "\nProcess took #{Time.now - start_time} seconds"      
   end
   
   protected
   
-    def parsed_options?
-      
-      # Specify options
-      opts = OptionParser.new 
-      opts.on('-r', '--ringier')    { @options.ringier = true }  
-      opts.on('-s', '--smd')        { @options.smd = true }
-      opts.on('-v', '--version')    { output_version ; exit 0 }
-      opts.on('-h', '--help')       { output_help }
-      opts.on('-V', '--verbose')    { @options.verbose = true }  
-      opts.on('-q', '--quiet')      { @options.quiet = true }
-            
-      opts.parse!(@arguments) rescue return false
-      
-      process_options
-      true      
-    end
-
-    # Performs post-parse processing on options
-    def process_options
-      @options.verbose = false if @options.quiet
-    end
-    
-    def output_options
-      puts "Options:\n"
-      
-      @options.marshal_dump.each do |name, val|        
-        puts "  #{name} = #{val}"
-      end
-      puts " "
-    end
-
-    # True if required arguments were provided
-    def arguments_valid?
-      # TODO arguments should be validated in a better way.
-      true if @arguments.length == 1
-    end
-    
-    # Setup the arguments
-    def process_arguments
-      @dir = @arguments.first
-    end
-    
-    def output_version
-      puts "#{File.basename(__FILE__)} version #{VERSION}"
-    end
-    
-    def process_command    
-      smart_puts("INFO: Starting script...")
-
-      smart_puts("INFO: Script ended.")
-    end
-
-    def process_standard_input
-      input = @stdin.read      
-    end
-  
-  end   
-
-  # return my_string if quiet-option wasn't set
-  def smart_puts(my_string)
-    puts my_string unless @options.quiet
+  def parse_dir(dir)
+    working_dirs = []
+    Dir.foreach(dir) {|x| working_dirs << x.class }
+    puts working_dirs
   end
+  
+  def validate_opts
+    Trollop::die :dir, "must be defined" if @opts[:dir].empty?
+    Trollop::die :dir, "must be a valid directory" unless File.directory?(@opts[:dir])
+    Trollop::die "Either SMD or Ringier option needs to be defined" if !@opts[:smd] && !@opts[:ringier]
+  end
+  
+end
 
 # Create and run the application
 app = App.new(ARGV, STDIN)
