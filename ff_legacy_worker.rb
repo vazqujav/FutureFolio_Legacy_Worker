@@ -119,6 +119,7 @@ class App
   
   # validate command-line options
   def validate_opts
+    Trollop::die "Please define a valid working directory" unless @opts.exists?
     Trollop::die :dir, "must be defined" if @opts[:dir].empty?
     Trollop::die :dir, "must be a valid directory" unless File.directory?(@opts[:dir])
   end
