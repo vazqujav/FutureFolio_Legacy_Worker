@@ -27,6 +27,10 @@ require 'date'
 
 class App
   
+  # SET CORRECT PATHS TO CORRESPONDING COLOR PROFILES!
+  CMYK_PROFILE_PATH = "./lib/CoatedGRACoL2006.icc"
+  RGB_PROFILE_PATH = "./lib/AppleRGB.icc"
+  
   def initialize(args, stdin)
     
     @opts = Trollop::options do
@@ -41,9 +45,7 @@ class App
       where [options] are:
       EOS
       # Options available for this application
-      opt :smd, "Work on SMD legacy PDFs"
-      opt :ringier, "Work on Ringier legacy PDFs"
-      opt :dir, "Working directory containing issue directories", :type => :string
+      opt :dir, "Working directory containing directories with legacy PDF pages", :type => :string
     end
     
   end
@@ -52,8 +54,8 @@ class App
   def run
     start_time = Time.now
     validate_opts
-    
     gather_working_dirs(@opts[:dir]).each do |issue_dir|
+      # start working on all PDFs that are found in <issue_dir>
       work_on_pdfs(issue_dir)
     end
     
@@ -62,32 +64,40 @@ class App
   
   protected
   
+  # Works on single PDFs within <issue_dir>
   def work_on_pdfs(issue_dir)
+    puts "Begin working on Folder #{issue_dir}"
     my_pdfs = []
     Dir.foreach(issue_dir) {|pdf| my_pdfs << "#{issue_dir}/#{pdf}" if valid_pdf?(issue_dir, pdf) }
-    my_pdfs.each do |my_pdf|
-      puts "Working on #{my_pdf}"
-      create_thumbnail(my_pdf)
+    # loop through <my_pdfs>
+    my_pdfs.each_with_index do |my_pdf,ind|
+      puts "Working on PDF #{my_pdf}"
+      # Create thumbnail
+      create_thumbnail(my_pdf,ind)
+      # Rename PDF
+      File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
     end
   end
   
+  # Gather all directories which supposedly contain PDFs
   def gather_working_dirs(dir)
     working_dirs = []
-    # gather all directories within dir
+    # gather all directories within <dir>
     Dir.foreach(dir) {|d| working_dirs << "#{dir}/#{d}" if valid_working_dir?(dir, d) }
     return working_dirs
   end
   
-  def create_thumbnail(my_pdf)
+  # Create thumbnail out of <my_pdf> and set FutureFolio compatible name
+  def create_thumbnail(my_pdf,ind)
     pdf = Magick::ImageList.new(my_pdf)
     thumb = pdf.resize_to_fit(256, 256)
     thumb.strip!
-    thumb.add_profile("./lib/CoatedGRACoL2006.icc")
+    thumb.add_profile(CMYK_PROFILE_PATH)
     thumb.colorspace = Magick::SRGBColorspace
-    thumb.add_profile("./lib/AppleRGB.icc")
+    thumb.add_profile(RGB_PROFILE_PATH)
     thumb.format = 'JPG'
     thumb.sharpen(0,0.8)
-    thumb.write("#{File.dirname(my_pdf)}/#{File.basename(my_pdf, '.pdf')}.jpg") { self.quality = 100 }
+    thumb.write("#{File.dirname(my_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
   end
   
   # check if we're looking at a directory and if directory is not . or ..
@@ -102,7 +112,7 @@ class App
   # check if we're looking at a valid PDF
   def valid_pdf?(base_dir, my_file)
     is_file = File.file?("#{base_dir}/#{my_file}")
-    # FIXME check if file is actually a PDF
+    # FIXME find smarter way to check for PDF
     is_pdf = true if my_file =~ /.*.(pdf|PDF)/ 
     return is_file && is_pdf
   end
@@ -111,7 +121,6 @@ class App
   def validate_opts
     Trollop::die :dir, "must be defined" if @opts[:dir].empty?
     Trollop::die :dir, "must be a valid directory" unless File.directory?(@opts[:dir])
-    Trollop::die "Either SMD or Ringier option needs to be defined" if !@opts[:smd] && !@opts[:ringier]
   end
   
 end
