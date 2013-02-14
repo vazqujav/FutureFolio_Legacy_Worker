@@ -28,8 +28,8 @@ require 'date'
 
 class App
   # SET CORRECT PATHS TO CORRESPONDING COLOR PROFILES!
-  CMYK_PROFILE_PATH = "./lib/CoatedGRACoL2006.icc"
-  RGB_PROFILE_PATH = "./lib/AppleRGB.icc"
+  #CMYK_PROFILE_PATH = "./lib/CoatedGRACoL2006.icc"
+  RGB_PROFILE_PATH = "./lib/sRGB.icc"
   
   def initialize(args, stdin)
     @opts = Trollop::options do
@@ -108,6 +108,8 @@ class App
   # Create thumbnail out of <my_pdf> and set FutureFolio compatible filename
   def create_thumbnail(my_pdf,ind)
     pdf = Magick::ImageList.new(my_pdf) {self.colorspace = Magick::SRGBColorspace}
+    pdf.strip!
+    pdf.add_profile(RGB_PROFILE_PATH)
     thumb = pdf.resize_to_fit(256, 256)
     thumb = thumb.write("#{File.dirname(my_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
     Trollop::die "Could not write thumbnail #{File.dirname(my_pdf)}/page-#{ind}.jpg" if thumb.nil?
