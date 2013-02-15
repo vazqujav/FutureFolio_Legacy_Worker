@@ -106,8 +106,6 @@ class App
   # Import PDF, add color profiles, rename and write back to disk
   def rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
     pdf = Magick::ImageList.new(my_pdf) {self.colorspace = Magick::SRGBColorspace; self.density = '100x100'}
-    # FIXME: Why do the methods below not work?
-    # , self.rendering_intent = Magick::RelativeIntent; self.black_point_compensation = true
     pdf.strip!
     if ind == 0
       pdf.add_profile(CMYK_COVER_PROFILE)
@@ -116,6 +114,8 @@ class App
     end
     pdf.add_profile(RGB_IMAGES_PROFILE)
     pdf.add_profile(RGB_FINAL_PROFILE)
+    pdf.rendering_intent = Magick::RelativeIntent
+    pdf.black_point_compensation = true
     File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
     return pdf
   end
