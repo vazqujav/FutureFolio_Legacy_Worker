@@ -28,8 +28,10 @@ require 'date'
 
 class App
   # SET CORRECT PATHS TO CORRESPONDING COLOR PROFILES!
-  #CMYK_PROFILE_PATH = "./lib/CoatedGRACoL2006.icc"
-  RGB_PROFILE_PATH = "./lib/sRGB.icc"
+  CMYK_COVER_PROFILE = './CMYK-Profiles/ISOcoated_v2_300_eci.icc'
+  CMYK_PAGE_PROFILE = './CMYK-Profiles/PSO_LWC_Improved_eci.icc'
+  RGB_IMAGES_PROFILE = './RGB-Profiles/eciRGB_v2.icc'
+  RGB_FINAL_PROFILE = './RGB-Profiles/sRGB.icc'
   
   def initialize(args, stdin)
     @opts = Trollop::options do
@@ -74,10 +76,8 @@ class App
     when @opts[:ringier] then
       my_pdfs.each_with_index do |my_pdf,ind|
         puts "Working on Ringier PDF #{my_pdf}"
-        # Create thumbnail
-        create_thumbnail(my_pdf,ind)
-        # Rename PDF
-        File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
+        new_pdf = rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
+        create_thumbnail(my_pdf, new_pdf,ind)
       end
     # loop through SMD <my_pdfs>
     when @opts[:smd] then
@@ -87,10 +87,8 @@ class App
         # Pages start at 0 with FutureFolio naming convention
         page = ($1.to_i - 1).to_s
         puts "Working on SMD PDF #{my_pdf}"
-        # Create thumbnail
-        create_thumbnail(my_pdf,page)
-        # Rename PDF
-        File.rename(my_pdf,"#{issue_dir}/page-#{page}.pdf")
+        new_pdf = rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, page)
+        create_thumbnail(my_pdf, new_pdf,page)
       end
     else
       Trollop::die "No PDF type has been defined."
@@ -106,13 +104,24 @@ class App
   end
   
   # Create thumbnail out of <my_pdf> and set FutureFolio compatible filename
-  def create_thumbnail(my_pdf,ind)
-    pdf = Magick::ImageList.new(my_pdf) {self.colorspace = Magick::SRGBColorspace}
-    pdf.strip!
-    pdf.add_profile(RGB_PROFILE_PATH)
-    thumb = pdf.resize_to_fit(256, 256)
+  def create_thumbnail(my_pdf, new_pdf,ind)
+    thumb = new_pdf.resize_to_fit(256, 256)
     thumb = thumb.write("#{File.dirname(my_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
     Trollop::die "Could not write thumbnail #{File.dirname(my_pdf)}/page-#{ind}.jpg" if thumb.nil?
+  end
+  
+  def rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
+    pdf = Magick::ImageList.new(my_pdf) {self.colorspace = Magick::SRGBColorspace; self.density = '100x100'}
+    pdf.strip!
+    if ind == 0
+      pdf.add_profile(CMYK_COVER_PROFILE)
+    else
+      pdf.add_profile(CMYK_PAGE_PROFILE)
+    end
+    pdf.add_profile(RGB_IMAGES_PROFILE)
+    pdf.add_profile(RGB_FINAL_PROFILE)
+    File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
+    return pdf
   end
   
   # check if we're looking at a directory and if directory is not . or ..
