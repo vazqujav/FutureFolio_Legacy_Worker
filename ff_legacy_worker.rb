@@ -103,15 +103,11 @@ class App
     return working_dirs
   end
   
-  # Create thumbnail out of <my_pdf> and set FutureFolio compatible filename
-  def create_thumbnail(my_pdf, new_pdf,ind)
-    thumb = new_pdf.resize_to_fit(256, 256)
-    thumb = thumb.write("#{File.dirname(my_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
-    Trollop::die "Could not write thumbnail #{File.dirname(my_pdf)}/page-#{ind}.jpg" if thumb.nil?
-  end
-  
+  # Import PDF, add color profiles, rename and write back to disk
   def rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
     pdf = Magick::ImageList.new(my_pdf) {self.colorspace = Magick::SRGBColorspace; self.density = '100x100'}
+    # FIXME: Why do the methods below not work?
+    # , self.rendering_intent = Magick::RelativeIntent; self.black_point_compensation = true
     pdf.strip!
     if ind == 0
       pdf.add_profile(CMYK_COVER_PROFILE)
@@ -122,6 +118,13 @@ class App
     pdf.add_profile(RGB_FINAL_PROFILE)
     File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
     return pdf
+  end
+  
+  # Create thumbnail out of <my_pdf> and set FutureFolio compatible filename
+  def create_thumbnail(my_pdf, new_pdf,ind)
+    thumb = new_pdf.resize_to_fit(256, 256)
+    thumb = thumb.write("#{File.dirname(my_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
+    Trollop::die "Could not write thumbnail #{File.dirname(my_pdf)}/page-#{ind}.jpg" if thumb.nil?
   end
   
   # check if we're looking at a directory and if directory is not . or ..
