@@ -77,7 +77,7 @@ class App
       my_pdfs.each_with_index do |my_pdf,ind|
         puts "Working on Ringier PDF #{my_pdf}"
         new_pdf = rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
-        create_thumbnail(my_pdf, new_pdf,ind)
+        create_thumbnail(my_pdf,new_pdf,ind)
       end
     # loop through SMD <my_pdfs>
     when @opts[:smd] then
@@ -88,7 +88,7 @@ class App
         page = ($1.to_i - 1).to_s
         puts "Working on SMD PDF #{my_pdf}"
         new_pdf = rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, page)
-        create_thumbnail(my_pdf, new_pdf,page)
+        create_thumbnail(my_pdf,new_pdf,page)
       end
     else
       Trollop::die "No PDF type has been defined."
