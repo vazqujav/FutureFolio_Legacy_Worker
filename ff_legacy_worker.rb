@@ -27,16 +27,11 @@ require 'RMagick'
 require 'date'
 
 class App
-  # SET CORRECT PATHS TO CORRESPONDING COLOR PROFILES!
-  CMYK_COVER_PROFILE = './CMYK-Profiles/ISOcoated_v2_300_eci.icc'
-  CMYK_PAGE_PROFILE = './CMYK-Profiles/PSO_LWC_Improved_eci.icc'
-  RGB_IMAGES_PROFILE = './RGB-Profiles/eciRGB_v2.icc'
-  RGB_FINAL_PROFILE = './RGB-Profiles/sRGB.icc'
   
   def initialize(args, stdin)
     @opts = Trollop::options do
       # --version shows:
-      version "FutureFolio Legacy Worker 1.0.0 (c) 2013 Ringier AG, Javier Vazquez"
+      version "FutureFolio Legacy Worker 2.0.0 (c) 2013 Ringier AG, Javier Vazquez"
       # --help shows:
       banner <<-EOS
       Renames PDFs in directories to FutureFolio naming convention and creates a JPG thumbnail for every PDF
@@ -76,7 +71,7 @@ class App
     when @opts[:ringier] then
       my_pdfs.each_with_index do |my_pdf,ind|
         puts "Working on Ringier PDF #{my_pdf}"
-        new_pdf = rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
+        new_pdf = rename_pdf(my_pdf, issue_dir, ind)
         create_thumbnail(my_pdf,new_pdf,ind)
       end
     # loop through SMD <my_pdfs>
@@ -87,8 +82,8 @@ class App
         # Pages start at 0 with FutureFolio naming convention
         page = ($1.to_i - 1).to_s
         puts "Working on SMD PDF #{my_pdf}"
-        new_pdf = rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, page)
-        create_thumbnail(my_pdf,new_pdf,page)
+        new_pdf = rename_pdf(my_pdf, issue_dir, page)
+        create_thumbnail(new_pdf,page)
       end
     else
       Trollop::die "No PDF type has been defined."
@@ -104,27 +99,18 @@ class App
   end
   
   # Import PDF, add color profiles, rename and write back to disk
-  def rename_and_convert_pdf_from_cmyk_to_rgb(my_pdf, issue_dir, ind)
-    pdf = Magick::ImageList.new(my_pdf) {self.colorspace = Magick::SRGBColorspace; self.density = '100x100'}
-    pdf.strip!
-    if ind == 0
-      pdf.add_profile(CMYK_COVER_PROFILE)
-    else
-      pdf.add_profile(CMYK_PAGE_PROFILE)
-    end
-    pdf.add_profile(RGB_IMAGES_PROFILE)
-    pdf.add_profile(RGB_FINAL_PROFILE)
-    pdf.rendering_intent = Magick::RelativeIntent
-    pdf.black_point_compensation = true
+  def rename_pdf(my_pdf, issue_dir, ind)
     File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
     return pdf
   end
   
   # Create thumbnail out of <my_pdf> and set FutureFolio compatible filename
-  def create_thumbnail(my_pdf, new_pdf,ind)
-    thumb = new_pdf.resize_to_fit(256, 256)
-    thumb = thumb.write("#{File.dirname(my_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
-    Trollop::die "Could not write thumbnail #{File.dirname(my_pdf)}/page-#{ind}.jpg" if thumb.nil?
+  def create_thumbnail(new_pdf,ind)
+    pdf = Magick::ImageList.new(new_pdf) {self.colorspace = Magick::SRGBColorspace; self.density = '100x100'}
+    pdf.strip!
+    thumb = pdf.resize_to_fit(256, 256)
+    thumb = thumb.write("#{File.dirname(new_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
+    Trollop::die "Could not write thumbnail #{File.dirname(new_pdf)}/page-#{ind}.jpg" if thumb.nil?
   end
   
   # check if we're looking at a directory and if directory is not . or ..
