@@ -31,10 +31,10 @@ class App
   def initialize(args, stdin)
     @opts = Trollop::options do
       # --version shows:
-      version "FutureFolio Legacy Worker 2.0.0 (c) 2013 Ringier AG, Javier Vazquez"
+      version "FutureFolio Legacy Worker 2.1.0 (c) 2013 Ringier AG, Javier Vazquez"
       # --help shows:
       banner <<-EOS
-      Renames PDFs in directories to FutureFolio naming convention and creates a JPG thumbnail for every PDF
+      Renames PDFs and JPGs in directories to FutureFolio naming convention
       Expects directories with issues to be named <si_YearMonthDay> (e.g. si_20100802)
 
       Usage:
@@ -42,9 +42,9 @@ class App
       where [options] are:
       EOS
       # Options available for this application
-      opt :dir, "Working directory containing directories with legacy PDF pages", :type => :string
-      opt :ringier, "Work on Ringier legacy PDFs"
-      opt :smd, "Work on SMD legacy PDFs"
+      opt :dir, "Working directory containing directories with legacy files", :type => :string
+      opt :ringier, "Work on Ringier legacy files"
+      opt :smd, "Work on SMD legacy files"
     end
   end
   
@@ -65,28 +65,42 @@ class App
   def work_on_pdfs(issue_dir)
     puts "Begin working on Folder #{issue_dir}"
     my_pdfs = []
+    my_jpgs = []
     Dir.foreach(issue_dir) {|pdf| my_pdfs << "#{issue_dir}/#{pdf}" if valid_issue_dir_and_pdf?(issue_dir, pdf) }
+    Dir.foreach(issue_dir) {|jpg| my_jpgs << "#{issue_dir}/#{jpg}" if valid_issue_dir_and_jpg?(issue_dir, jpg) }
+    if my_pdfs.empty?
+      Trollop::die "There seem to be no PDFs"
+    end
+    if my_jpgs.empty?
+      Trollop::die "There seem to be no JPGs"
+    end
     case
-    # loop through Ringier <my_pdfs>
+    # loop through Ringier files
     when @opts[:ringier] then
       my_pdfs.each_with_index do |my_pdf,ind|
-        puts "Working on Ringier PDF #{my_pdf}"
-        new_pdf = rename_pdf(my_pdf, issue_dir, ind)
-        create_thumbnail(my_pdf,new_pdf,ind)
+        File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
       end
-    # loop through SMD <my_pdfs>
+      my_jpgs.each_with_index do |my_jpg,ind|
+        File.rename(my_jpg,"#{issue_dir}/page-#{ind}.jpg")
+      end
+    # loop through SMD files
     when @opts[:smd] then
       my_pdfs.each do |my_pdf|
         # Fetch page number from filename
         my_pdf =~ /si_\d{8}_\d_\d_(\d{1,2}).pdf/
         # Pages start at 0 with FutureFolio naming convention
         page = ($1.to_i - 1).to_s
-        puts "Working on SMD PDF #{my_pdf}"
-        new_pdf = rename_pdf(my_pdf, issue_dir, page)
-        create_thumbnail(new_pdf,page)
+        File.rename(my_pdf,"#{issue_dir}/page-#{page}.pdf")
+      end
+      my_jpgs.each_with_index do |my_jpg,ind|
+        # Fetch page number from filename
+        my_jpg =~ /si_\d{8}_\d_\d_(\d{1,2}).jpg/
+        # Pages start at 0 with FutureFolio naming convention
+        page = ($1.to_i - 1).to_s
+        File.rename(my_jpg,"#{issue_dir}/page-#{page}.jpg")
       end
     else
-      Trollop::die "No PDF type has been defined."
+      Trollop::die "No type has been defined."
     end
   end
   
@@ -96,21 +110,6 @@ class App
     # gather all directories within <dir>
     Dir.foreach(dir) {|d| working_dirs << "#{dir}/#{d}" if valid_working_dir?(dir, d) }
     return working_dirs
-  end
-  
-  # Import PDF, add color profiles, rename and write back to disk
-  def rename_pdf(my_pdf, issue_dir, ind)
-    File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
-    return pdf
-  end
-  
-  # Create thumbnail out of <my_pdf> and set FutureFolio compatible filename
-  def create_thumbnail(new_pdf,ind)
-    pdf = Magick::ImageList.new(new_pdf) {self.colorspace = Magick::SRGBColorspace; self.density = '100x100'}
-    pdf.strip!
-    thumb = pdf.resize_to_fit(256, 256)
-    thumb = thumb.write("#{File.dirname(new_pdf)}/page-#{ind}.jpg") { self.quality = 100 }
-    Trollop::die "Could not write thumbnail #{File.dirname(new_pdf)}/page-#{ind}.jpg" if thumb.nil?
   end
   
   # check if we're looking at a directory and if directory is not . or ..
@@ -131,9 +130,18 @@ class App
     return is_file && is_pdf && is_issue_dir
   end
   
+  # check if we're looking at a valid PDF
+  def valid_issue_dir_and_jpg?(base_dir, my_file)
+    is_file = File.file?("#{base_dir}/#{my_file}")
+    # FIXME find smarter way to check for JPG
+    is_jpg = true if my_file =~ /.*.(jpg|JPG)/ 
+    is_issue_dir = true if base_dir =~ /.*\/si_\d{8}/
+    return is_file && is_jpg && is_issue_dir
+  end
+  
   # validate command-line options
   def validate_opts
-    Trollop::die "PDF type must be defined" unless @opts[:ringier] or @opts[:smd]
+    Trollop::die "type must be defined" unless @opts[:ringier] or @opts[:smd]
     Trollop::die :dir, "must be defined" if @opts[:dir].empty?
     Trollop::die :dir, "must be a valid directory" unless File.directory?(@opts[:dir])
   end
