@@ -69,10 +69,10 @@ class App
     Dir.foreach(issue_dir) {|pdf| my_pdfs << "#{issue_dir}/#{pdf}" if valid_issue_dir_and_pdf?(issue_dir, pdf) }
     Dir.foreach(issue_dir) {|jpg| my_jpgs << "#{issue_dir}/#{jpg}" if valid_issue_dir_and_jpg?(issue_dir, jpg) }
     if my_pdfs.empty?
-      Trollop::die "There seem to be no PDFs"
+      Trollop::die "There seem to be no PDFs in #{issue_dir}"
     end
     if my_jpgs.empty?
-      Trollop::die "There seem to be no JPGs"
+      Trollop::die "There seem to be no JPGs in #{issue_dir}"
     end
     case
     # loop through Ringier files
