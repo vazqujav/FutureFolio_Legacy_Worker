@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby 
 
 # == Synopsis 
-#   Renames PDFs in directories to FutureFolio standard and creates a JPG thumbnail for every PDF
-#   Requires: Ghostscript, ImageMagick, RMagick (gem) and Trollop (gem)
+#   Renames PDFs and JPGs in directories to FutureFolio naming convention
+#   Requires: Trollop (gem)
 #
 # == Author
 #   Javier Vazquez
@@ -23,7 +23,6 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'trollop'
-require 'RMagick'
 require 'date'
 
 class App
