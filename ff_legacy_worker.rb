@@ -2,7 +2,7 @@
 
 # == Synopsis 
 #   Renames PDFs and JPGs in directories to FutureFolio naming convention
-#   Requires: Trollop (gem)
+#   Requires: Trollop (gem) and rubyzip (gem)
 #
 # == Author
 #   Javier Vazquez
@@ -35,7 +35,7 @@ class App
       version "FutureFolio Legacy Worker 2.2.0 (c) 2013 Ringier AG, Javier Vazquez"
       # --help shows:
       banner <<-EOS
-      Renames PDFs and JPGs in directories to FutureFolio naming convention
+      Renames PDFs and JPGs in directories to FutureFolio naming convention and moves them into ZIP
       Expects directories with issues to be named <si_YearMonthDay> (e.g. si_20100802)
 
       Usage:
