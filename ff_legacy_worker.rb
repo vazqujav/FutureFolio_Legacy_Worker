@@ -22,6 +22,8 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+require 'rubygems'
+require 'zip/zip'
 require 'trollop'
 require 'date'
 
@@ -52,17 +54,19 @@ class App
     start_time = Time.now
     validate_opts
     gather_working_dirs(@opts[:dir]).each do |issue_dir|
-      # start working on all PDFs that are found in <issue_dir>
-      work_on_pdfs(issue_dir)
+      # start working on all PDFs and JPGs that are found in <issue_dir>
+      create_ff_package(issue_dir)
     end
     puts "\nProcess took #{Time.now - start_time} seconds"      
   end
   
   protected
   
-  # Works on single PDFs within <issue_dir>
-  def work_on_pdfs(issue_dir)
+  # Creates FutureFolio (zip) package from PDFs and JPGs found within <issue_dir>
+  def create_ff_package(issue_dir)
     puts "Begin working on Folder #{issue_dir}"
+    zip_dir = File.join(issue_dir,'../'+File.basename(issue_dir))+'.zip'
+    zipfile = Zip::ZipFile.open(zip_dir, Zip::ZipFile::CREATE)
     my_pdfs = []
     my_jpgs = []
     Dir.foreach(issue_dir) {|pdf| my_pdfs << "#{issue_dir}/#{pdf}" if valid_issue_dir_and_pdf?(issue_dir, pdf) }
@@ -78,29 +82,34 @@ class App
     when @opts[:ringier] then
       my_pdfs.each_with_index do |my_pdf,ind|
         File.rename(my_pdf,"#{issue_dir}/page-#{ind}.pdf")
+        zipfile.add("page-#{ind}.pdf", "#{issue_dir}/page-#{ind}.pdf")
       end
       my_jpgs.each_with_index do |my_jpg,ind|
         File.rename(my_jpg,"#{issue_dir}/page-#{ind}.jpg")
+        zipfile.add("page-#{ind}.jpg", "#{issue_dir}/page-#{ind}.jpg")
       end
     # loop through SMD files
     when @opts[:smd] then
       my_pdfs.each do |my_pdf|
         # Fetch page number from filename
-        my_pdf =~ /si_\d{8}_\d_\d_(\d{1,2}).pdf/
+        my_pdf =~ /si_\d{8}_\d_\d_(\d{1,3}).pdf/
         # Pages start at 0 with FutureFolio naming convention
         page = ($1.to_i - 1).to_s
         File.rename(my_pdf,"#{issue_dir}/page-#{page}.pdf")
+        zipfile.add("page-#{page}.pdf", "#{issue_dir}/page-#{page}.pdf")
       end
       my_jpgs.each_with_index do |my_jpg,ind|
         # Fetch page number from filename
-        my_jpg =~ /si_\d{8}_\d_\d_(\d{1,2}).jpg/
+        my_jpg =~ /si_\d{8}_\d_\d_(\d{1,3}).jpg/
         # Pages start at 0 with FutureFolio naming convention
         page = ($1.to_i - 1).to_s
         File.rename(my_jpg,"#{issue_dir}/page-#{page}.jpg")
+        zipfile.add("page-#{page}.jpg", "#{issue_dir}/page-#{page}.jpg")
       end
     else
       Trollop::die "No type has been defined."
     end
+    zipfile.close
   end
   
   # Gather all directories which supposedly contain PDFs
