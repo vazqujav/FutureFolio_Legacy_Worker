@@ -109,11 +109,7 @@ class App
     else
       Trollop::die "No type has been defined."
     end
-    zipfile.add("folioIssueBackgroundPhoneLandscape.png", "./folioIssueBackgroundPhoneLandscape.png")
-    zipfile.add("folioIssueBackgroundPhonePortrait.png", "./folioIssueBackgroundPhonePortrait.png")
-    zipfile.add("folioIssueBackgroundTabletLandscape.png", "./folioIssueBackgroundTabletLandscape.png")
-    zipfile.add("folioIssueBackgroundTabletPortrait.png", "./folioIssueBackgroundTabletPortrait.png")
-    zipfile.get_output_stream("manifest.xml") { |f| f.puts get_manifest(my_pdfs.size) }
+    add_static_files(zipfile, my_pdfs.size)
     zipfile.close
   end
   
@@ -123,6 +119,15 @@ class App
     # gather all directories within <dir>
     Dir.foreach(dir) {|d| working_dirs << "#{dir}/#{d}" if valid_working_dir?(dir, d) }
     return working_dirs
+  end
+  
+  # adds background and manifest.xml to zip package
+  def add_static_files(zipfile, number_of_pages)
+    zipfile.add("folioIssueBackgroundPhoneLandscape.png", "./folioIssueBackgroundPhoneLandscape.png")
+    zipfile.add("folioIssueBackgroundPhonePortrait.png", "./folioIssueBackgroundPhonePortrait.png")
+    zipfile.add("folioIssueBackgroundTabletLandscape.png", "./folioIssueBackgroundTabletLandscape.png")
+    zipfile.add("folioIssueBackgroundTabletPortrait.png", "./folioIssueBackgroundTabletPortrait.png")
+    zipfile.get_output_stream("manifest.xml") { |f| f.puts get_manifest(number_of_pages) }
   end
   
   # check if we're looking at a directory and if directory is not . or ..
