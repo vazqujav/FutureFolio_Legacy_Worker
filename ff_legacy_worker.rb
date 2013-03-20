@@ -32,7 +32,7 @@ class App
   def initialize(args, stdin)
     @opts = Trollop::options do
       # --version shows:
-      version "FutureFolio Legacy Worker 2.1.0 (c) 2013 Ringier AG, Javier Vazquez"
+      version "FutureFolio Legacy Worker 2.2.0 (c) 2013 Ringier AG, Javier Vazquez"
       # --help shows:
       banner <<-EOS
       Renames PDFs and JPGs in directories to FutureFolio naming convention
@@ -66,7 +66,7 @@ class App
   def create_ff_package(issue_dir)
     puts "Begin working on Folder #{issue_dir}"
     zip_dir = File.join(issue_dir,'../'+File.basename(issue_dir))+'.zip'
-    zipfile = Zip::ZipFile.open(zip_dir, Zip::ZipFile::CREATE)
+    zipfile = Zip::ZipFile.new(zip_dir, true)
     my_pdfs = []
     my_jpgs = []
     Dir.foreach(issue_dir) {|pdf| my_pdfs << "#{issue_dir}/#{pdf}" if valid_issue_dir_and_pdf?(issue_dir, pdf) }
@@ -109,6 +109,11 @@ class App
     else
       Trollop::die "No type has been defined."
     end
+    zipfile.add("folioIssueBackgroundPhoneLandscape.png", "./folioIssueBackgroundPhoneLandscape.png")
+    zipfile.add("folioIssueBackgroundPhonePortrait.png", "./folioIssueBackgroundPhonePortrait.png")
+    zipfile.add("folioIssueBackgroundTabletLandscape.png", "./folioIssueBackgroundTabletLandscape.png")
+    zipfile.add("folioIssueBackgroundTabletPortrait.png", "./folioIssueBackgroundTabletPortrait.png")
+    zipfile.get_output_stream("manifest.xml") { |f| f.puts get_manifest(my_pdfs.size) }
     zipfile.close
   end
   
@@ -145,6 +150,26 @@ class App
     is_jpg = true if my_file =~ /.*.(jpg|JPG)/ 
     is_issue_dir = true if base_dir =~ /.*\/si_\d{8}/
     return is_file && is_jpg && is_issue_dir
+  end
+  
+  def get_manifest(number_of_pages)
+    manifest = <<-EOD
+    <fonz>
+    	<pageWidth>2032</pageWidth>
+    	<pageHeight>2729</pageHeight>
+    	<pages>#{number_of_pages}</pages>
+    	<tocMode>1</tocMode>
+    	<centreCoversInLandscape>True</centreCoversInLandscape>
+    	<portraitPageAlignmentMode>1</portraitPageAlignmentMode>
+    	<coverPageNumber>0</coverPageNumber>
+    	<linkColour>f4da237c</linkColour>
+    	<linkPadding>2</linkPadding>
+    	<linkBorderColour>f4da23b4</linkBorderColour>
+    	<linkBorderWidth>1</linkBorderWidth>
+    	<enableSpreadMode>1</enableSpreadMode>
+    </fonz>
+    EOD
+    return manifest
   end
   
   # validate command-line options
